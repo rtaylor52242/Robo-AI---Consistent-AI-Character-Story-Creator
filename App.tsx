@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Character, GeneratedImage, AspectRatio, MAX_PROMPTS } from './types';
 import { CharacterSlot } from './components/CharacterSlot';
 import { Button } from './components/Button';
+import { ImageLightbox } from './components/ImageLightbox';
+import { HelpModal } from './components/HelpModal';
 import { generateImageWithGemini } from './services/geminiService';
 
 // Utils for date formatting
@@ -28,6 +30,8 @@ const App: React.FC = () => {
   const [prompts, setPrompts] = useState<string[]>([""]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // --- Handlers ---
 
@@ -134,15 +138,36 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-robo-dark text-robo-text flex flex-col lg:flex-row font-sans overflow-hidden">
       
+      {/* Modals */}
+      {viewingImage && (
+        <ImageLightbox 
+          imageUrl={viewingImage} 
+          onClose={() => setViewingImage(null)} 
+        />
+      )}
+      
+      {showHelp && (
+        <HelpModal onClose={() => setShowHelp(false)} />
+      )}
+
       {/* --- Left Column: Control Panel --- */}
-      <div className="w-full lg:w-[400px] shrink-0 bg-robo-dark border-r border-robo-border flex flex-col h-screen overflow-y-auto custom-scrollbar">
+      <div className="w-full lg:w-[400px] shrink-0 bg-robo-dark border-r border-robo-border flex flex-col h-screen overflow-y-auto custom-scrollbar z-20 shadow-xl">
         <div className="p-6 space-y-8">
           
-          <header>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <span className="text-robo-accent">⚡</span> Robo AI
-            </h1>
-            <p className="text-sm text-robo-muted mt-1">Consistent AI Character Story Creator</p>
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <span className="text-robo-accent">⚡</span> Robo AI
+              </h1>
+              <p className="text-sm text-robo-muted mt-1">Consistent AI Character Story Creator</p>
+            </div>
+            <button
+              onClick={() => setShowHelp(true)}
+              className="p-2 text-robo-muted hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              title="How to use"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </button>
           </header>
 
           {/* 1. Character References */}
@@ -236,77 +261,107 @@ const App: React.FC = () => {
       </div>
 
       {/* --- Right Column: Results --- */}
-      <div className="flex-1 bg-gray-900 h-screen overflow-y-auto">
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-white">Results Gallery</h2>
-            {generatedImages.length > 0 && (
-               <Button onClick={handleDownloadAll} disabled={isGenerating || generatedImages.every(i => !i.imageUrl)}>
-                 Download All
-               </Button>
-            )}
-          </div>
-
-          {generatedImages.length === 0 ? (
-            <div className="h-[60vh] flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-800 rounded-2xl">
-              <svg className="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              <p>Configure your characters and prompts to start generating.</p>
+      <div className="flex-1 bg-[#0f172a] p-4 lg:p-8 h-screen overflow-y-auto custom-scrollbar">
+        <div className="max-w-6xl mx-auto">
+          <header className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Generated Stories</h2>
+              <p className="text-robo-muted text-sm">Your generated storyboards will appear here</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {generatedImages.map((img) => (
-                <div key={img.id} className="bg-robo-panel border border-robo-border rounded-xl overflow-hidden shadow-xl flex flex-col group">
-                  <div className="aspect-video bg-black relative overflow-hidden">
-                    {img.isLoading ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-robo-accent"></div>
+            {generatedImages.some(img => img.imageUrl) && (
+              <Button variant="secondary" onClick={handleDownloadAll} disabled={isGenerating}>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Download Batch
+              </Button>
+            )}
+          </header>
+
+          {/* Empty State */}
+          {generatedImages.length === 0 && (
+             <div className="flex flex-col items-center justify-center h-[60vh] text-robo-muted border-2 border-dashed border-robo-border rounded-2xl bg-robo-panel/30">
+               <div className="w-20 h-20 rounded-full bg-robo-panel mb-4 flex items-center justify-center">
+                 <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+               </div>
+               <p className="text-lg font-medium text-gray-400">Ready to create your story?</p>
+               <p className="text-sm text-gray-600 mt-2 max-w-xs text-center">Setup your characters and prompts on the left, then hit Generate.</p>
+             </div>
+          )}
+
+          {/* Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-12">
+            {generatedImages.map((image) => (
+              <div key={image.id} className="bg-robo-panel rounded-xl overflow-hidden border border-robo-border shadow-lg flex flex-col animate-in fade-in duration-500 fill-mode-backwards" style={{ animationDelay: `${image.index * 100}ms` }}>
+                
+                {/* Image Container */}
+                <div className="relative aspect-video bg-gray-900 group">
+                  {image.isLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-4 border-robo-accent border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs text-gray-500 animate-pulse">Dreaming up scene {image.index}...</span>
                       </div>
-                    ) : img.error ? (
-                      <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-red-400 text-sm bg-black/80">
-                        {img.error}
-                      </div>
-                    ) : img.imageUrl ? (
-                      <>
-                        <img src={img.imageUrl} alt={img.prompt} className="w-full h-full object-contain" />
-                        {/* Overlay */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                           <button 
-                             onClick={() => window.open(img.imageUrl!, '_blank')}
-                             className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
-                             title="View Full Size"
-                           >
-                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                           </button>
-                           <button 
-                             onClick={() => handleDownloadOne(img)}
-                             className="p-2 bg-robo-accent hover:bg-robo-accentHover rounded-full text-white shadow-lg transition-colors"
-                             title="Download"
-                           >
-                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                           </button>
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-mono text-robo-muted bg-black/30 px-2 py-1 rounded">
-                          #{String(img.index).padStart(3, '0')}
-                        </span>
-                        <span className="text-[10px] text-gray-500">{getFormattedDate()}</span>
                     </div>
-                    <p className="text-sm text-gray-300 line-clamp-2" title={img.prompt}>
-                      {img.prompt}
-                    </p>
+                  ) : image.error ? (
+                    <div className="absolute inset-0 flex items-center justify-center p-4 text-center bg-red-900/10">
+                      <div className="text-red-400">
+                        <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p className="text-xs font-medium">{image.error}</p>
+                      </div>
+                    </div>
+                  ) : image.imageUrl ? (
+                    <>
+                      <img 
+                        src={image.imageUrl} 
+                        alt={image.prompt} 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                      />
+                      {/* Overlay Actions */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
+                        <button 
+                          onClick={() => setViewingImage(image.imageUrl)}
+                          className="p-3 bg-white text-gray-900 rounded-full hover:bg-gray-200 transition-colors transform hover:scale-110"
+                          title="Zoom View"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadOne(image)}
+                          className="p-3 bg-robo-accent text-white rounded-full hover:bg-robo-accentHover transition-colors transform hover:scale-110"
+                          title="Download"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                  
+                  {/* Aspect Ratio Badge */}
+                  <div className="absolute top-3 right-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-[10px] text-white/80 font-mono border border-white/10">
+                    {image.index.toString().padStart(3, '0')}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {/* Card Content */}
+                <div className="p-4 flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-sm text-gray-300 line-clamp-3 leading-relaxed">
+                      {image.prompt}
+                    </p>
+                  </div>
+                  
+                  {image.imageUrl && (
+                    <div className="mt-4 pt-3 border-t border-robo-border flex justify-between items-center text-xs text-gray-500 font-mono">
+                      <span>{getFormattedDate()}</span>
+                      <span>Generative AI</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
     </div>
   );
 };
