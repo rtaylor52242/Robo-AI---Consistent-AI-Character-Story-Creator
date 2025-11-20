@@ -1,0 +1,5 @@
+{
+  "name": "Robo AI - Consistent AI Character Story Creator",
+  "description": "A consistent AI character generator tool using Gemini Nano Banana models. Upload references, set prompts, and batch generate story images.",
+  "requestFramePermissions": []
+}
